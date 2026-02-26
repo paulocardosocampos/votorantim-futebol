@@ -5,10 +5,10 @@
     "scripts": {
         "build": "nest build",
         "format": "prettier --write \"src/**/*.ts\"",
-        "start": "node dist/apps/api/src/main",
+        "start": "node dist/main",
         "dev": "ts-node-dev --respawn --transpile-only -r tsconfig-paths/register src/main.ts",
         "start:debug": "ts-node-dev --respawn --debug --transpile-only -r tsconfig-paths/register src/main.ts",
-        "start:prod": "node dist/apps/api/src/main",
+        "start:prod": "node dist/main",
         "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix"
     },
     "dependencies": {
