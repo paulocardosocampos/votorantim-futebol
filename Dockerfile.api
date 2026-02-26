@@ -34,10 +34,11 @@ COPY --from=builder /app/packages/database/package.json ./packages/database/
 # Reinstala só as dependências de produção
 RUN npm install --omit=dev
 
-# Copia o build e o Prisma Client gerado
+# Copia o build da API
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
-COPY --from=builder /app/packages/database/node_modules/.prisma ./packages/database/node_modules/.prisma
-COPY --from=builder /app/packages/database/prisma ./packages/database/prisma
+
+# Copia o pacote de banco de dados por inteiro, pois a API depende do seu index.ts em runtime no formato monorepo
+COPY --from=builder /app/packages/database ./packages/database
 
 # Expõe a porta padrão da API
 EXPOSE 3001
