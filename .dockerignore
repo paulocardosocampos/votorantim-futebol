@@ -1,0 +1,29 @@
+# Ignorar node_modules (recriado no Docker)
+node_modules
+**/node_modules
+
+# Ignorar arquivos de ambiente com secrets
+.env
+.env.*
+!.env.example
+
+# Build outputs locais
+apps/api/dist
+apps/web/.next
+
+# Logs
+*.log
+api-logs.txt
+
+# OS e editor
+.DS_Store
+Thumbs.db
+.vscode
+.idea
+
+# Git
+.git
+.gitignore
+
+# Prisma Studio tmp
+*.db

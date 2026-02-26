@@ -1,0 +1,41 @@
+# ====================================================
+# Dockerfile para o Frontend (Next.js Web)
+# Build context: raiz do monorepo
+# ====================================================
+
+FROM node:20-alpine AS builder
+WORKDIR /app
+
+# Copia manifests do workspace
+COPY package.json package-lock.json ./
+COPY apps/web/package.json ./apps/web/
+COPY packages/database/package.json ./packages/database/
+
+# Instala dependências
+RUN npm install
+
+# Copia o código-fonte
+COPY apps/web ./apps/web
+COPY packages/database ./packages/database
+
+# Gera o Prisma Client (necessário para o `transpilePackages`)
+RUN cd packages/database && npx prisma generate
+
+# Build do Next.js (usa o output standalone configurado no next.config.js)
+RUN cd apps/web && npm run build
+
+# ====================================================
+FROM node:20-alpine AS runner
+WORKDIR /app
+
+ENV NODE_ENV=production
+ENV PORT=3000
+
+# Next.js standalone inclui server.js + arquivos estáticos
+COPY --from=builder /app/apps/web/.next/standalone ./
+COPY --from=builder /app/apps/web/.next/static ./apps/web/.next/static
+COPY --from=builder /app/apps/web/public ./apps/web/public
+
+EXPOSE 3000
+
+CMD ["node", "apps/web/server.js"]

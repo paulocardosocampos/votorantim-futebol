@@ -1,0 +1,188 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Enum para controle de acesso
+enum Role {
+  ADMIN
+  REPRESENTANTE
+  CNPJ_MASTER // Dono da loja
+  CPF_SELLER  // Vendedor
+}
+
+// Enum para status de Nota Fiscal
+enum InvoiceStatus {
+  STANDBY   // Aguardando aprovação de vínculo ou definição de porcentagem
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// Enum para status de vínculo empresa-vendedor
+enum LinkStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  passwordHash  String
+  name          String
+  role          Role      @default(CPF_SELLER)
+  document      String    @unique // CNPJ ou CPF
+  favoriteTeam  String?
+  
+  // Relação Hierárquica (Vendedor -> Loja)
+  storeId       String?
+  store         User?     @relation("StoreToSellers", fields: [storeId], references: [id])
+  sellers       User[]    @relation("StoreToSellers")
+
+  // Relação Hierárquica (Loja -> Representante)
+  representativeId String?
+  representative   User?     @relation("RepToStores", fields: [representativeId], references: [id])
+  stores           User[]    @relation("RepToStores")
+
+  // Saldo atual consolidado (cache do Ledger)
+  coinBalance   Int       @default(0)
+
+  // Recuperação de Senha
+  resetToken        String?   @unique
+  resetTokenExpires DateTime?
+
+  // Relações
+  transactions  Ledger[]
+  invoices      Invoice[]
+  orders        Order[]
+
+  // Relações de vínculo empresa-vendedor
+  sellerLinks   EmployeeLink[] @relation("SellerLinks")
+  storeLinks    EmployeeLink[] @relation("StoreLinks")
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model EmployeeLink {
+  id              String     @id @default(uuid())
+  status          LinkStatus @default(PENDING)
+
+  // Vendedor (CPF_SELLER) que solicitou o vínculo
+  sellerId        String
+  seller          User       @relation("SellerLinks", fields: [sellerId], references: [id])
+
+  // Empresa (CNPJ_MASTER) à qual o vendedor quer se vincular
+  storeId         String
+  store           User       @relation("StoreLinks", fields: [storeId], references: [id])
+
+  // Porcentagem de coins que o VENDEDOR recebe (0-100). O restante fica na empresa.
+  coinPercentage  Int        @default(0)
+
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  @@unique([sellerId, storeId])
+}
+
+model Invoice {
+  id            String        @id @default(uuid())
+  accessKey     String        @unique // 44 dígitos
+  status        InvoiceStatus @default(PENDING)
+  coinsIssued   Int           @default(0)
+  xmlData       Json?         // Dados brutos da nota
+  
+  userId        String
+  user          User          @relation(fields: [userId], references: [id])
+  
+  processedAt   DateTime?
+  createdAt     DateTime      @default(now())
+}
+
+model Ledger {
+  id            String   @id @default(uuid())
+  amount        Int      // Positivo para crédito, Negativo para débito
+  type          String   // "INVOICE_REWARD", "TRANSFER_SENT", "TRANSFER_RECEIVED", "REDEMPTION"
+  description   String
+  
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+  
+  relatedEntityId String? // ID da Invoice, Order ou outro User (em caso de transferência)
+  
+  createdAt     DateTime @default(now())
+}
+
+model EventPackage {
+  id            String   @id @default(uuid())
+  title         String
+  championship  String
+  teamMatch     String   // Ex: "Corinthians vs Palmeiras"
+  eventDate     DateTime
+  priceCoins    Int
+  stock         Int
+  location      String
+  
+  // Flags Modulares
+  hasAirfare    Boolean  @default(false)
+  hasHotel      Boolean  @default(false)
+  hasTransfer   Boolean  @default(false)
+  hasFood       Boolean  @default(false)
+  
+  description   String?
+  imageUrl      String?
+  isActive      Boolean  @default(true)
+  
+  orders        Order[]
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Order {
+  id            String   @id @default(uuid())
+  status        String   @default("PENDING") // PENDING, CONFIRMED, CANCELLED
+  totalCoins    Int
+  
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+  
+  packageId     String
+  package       EventPackage @relation(fields: [packageId], references: [id])
+  
+  passengers    Passenger[]
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Passenger {
+  id            String   @id @default(uuid())
+  fullName      String
+  document      String   // CPF/RG
+  birthDate     DateTime
+  email         String?
+  
+  orderId       String
+  order         Order    @relation(fields: [orderId], references: [id])
+}
+
+// Emissores de NF-e autorizados a gerar Votorantim Coins
+// Gerenciado pelo Admin via painel — sem necessidade de alterar código
+model AllowedEmitter {
+  id        String   @id @default(uuid())
+  cnpj      String   @unique // 14 dígitos, sem pontuação
+  name      String           // Nome da empresa para exibição
+  active    Boolean  @default(true)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

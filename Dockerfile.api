@@ -1,0 +1,50 @@
+# ====================================================
+# Dockerfile para o Backend (NestJS API)
+# Build context: raiz do monorepo
+# ====================================================
+
+FROM node:20-alpine AS builder
+WORKDIR /app
+
+# Copia manifests do workspace (root + packages que a API depende)
+COPY package.json package-lock.json ./
+COPY apps/api/package.json ./apps/api/
+COPY packages/database/package.json ./packages/database/
+
+# Instala todas as dependências do workspace
+RUN npm install
+
+# Copia o código-fonte
+COPY apps/api ./apps/api
+COPY packages/database ./packages/database
+
+# Gera o Prisma Client
+RUN cd packages/database && npx prisma generate
+
+# Compila o NestJS
+RUN cd apps/api && npm run build
+
+# ====================================================
+FROM node:20-alpine AS runner
+WORKDIR /app
+
+ENV NODE_ENV=production
+
+# Copia apenas o necessário para rodar
+COPY --from=builder /app/package.json ./
+COPY --from=builder /app/package-lock.json ./
+COPY --from=builder /app/apps/api/package.json ./apps/api/
+COPY --from=builder /app/packages/database/package.json ./packages/database/
+
+# Reinstala só as dependências de produção
+RUN npm install --omit=dev
+
+# Copia o build e o Prisma Client gerado
+COPY --from=builder /app/apps/api/dist ./apps/api/dist
+COPY --from=builder /app/packages/database/node_modules/.prisma ./packages/database/node_modules/.prisma
+COPY --from=builder /app/packages/database/prisma ./packages/database/prisma
+
+# Expõe a porta padrão da API
+EXPOSE 3001
+
+CMD ["node", "apps/api/dist/src/main"]

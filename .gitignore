@@ -1,0 +1,36 @@
+# Dependencies
+node_modules
+**/node_modules
+
+# Environment variables (NEVER commitar!)
+.env
+.env.*
+!.env.example
+
+# Build outputs
+apps/api/dist
+apps/web/.next
+apps/web/out
+
+# Prisma query engine binaries (gerados localmente)
+packages/database/node_modules/.prisma
+
+# Logs
+*.log
+api-logs.txt
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode
+.idea
+*.swp
+
+# Turbo cache
+.turbo
+
+# Railway / Docker temp
+*.tmp
