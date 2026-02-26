@@ -43,4 +43,6 @@ COPY --from=builder /app/packages/database ./packages/database
 # Expõe a porta padrão da API
 EXPOSE 3001
 
-CMD ["node", "apps/api/dist/apps/api/src/main"]
+# Tenta os dois caminhos possíveis que o NestJS pode gerar dependendo do ambiente
+# Se não achar nenhum, lista os arquivos gerados para debug e falha
+CMD ["sh", "-c", "node apps/api/dist/main.js || node apps/api/dist/apps/api/src/main.js || (echo '=== ARQUIVOS EM DIST ===' && find apps/api/dist && exit 1)"]
