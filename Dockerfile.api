@@ -15,8 +15,9 @@ RUN npm install
 # Gera o Prisma Client
 RUN cd packages/database && npx prisma generate
 
-# Compila o NestJS
-RUN cd apps/api && npm run build
+# Compila o NestJS usando o script de build local ou global
+# Usando npx turbo ou nest build garantimos que as deps do workspace estão sendo respeitadas
+RUN npx turbo run build --filter=@votorantim-futebol/api
 
 # ====================================================
 FROM node:20-alpine AS runner
