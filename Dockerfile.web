@@ -6,17 +6,11 @@
 FROM node:20-alpine AS builder
 WORKDIR /app
 
-# Copia manifests do workspace
-COPY package.json package-lock.json ./
-COPY apps/web/package.json ./apps/web/
-COPY packages/database/package.json ./packages/database/
+# Copia todo o workspace
+COPY . .
 
 # Instala dependências
 RUN npm install
-
-# Copia o código-fonte
-COPY apps/web ./apps/web
-COPY packages/database ./packages/database
 
 # Gera o Prisma Client (necessário para o `transpilePackages`)
 RUN cd packages/database && npx prisma generate
