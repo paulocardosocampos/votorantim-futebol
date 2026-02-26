@@ -1,10 +1,38 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
 import { PrismaService } from '../prisma.service';
 import { Prisma, User } from '@votorantim-futebol/database';
 
 @Injectable()
-export class UsersService {
+export class UsersService implements OnModuleInit {
     constructor(private prisma: PrismaService) { }
+
+    async onModuleInit() {
+        const adminEmail = 'paulocardosocampos1985@gmail.com';
+        const adminPassword = 'voticoin';
+
+        try {
+            const admin = await this.prisma.user.findFirst({ where: { role: 'ADMIN' } });
+
+            if (admin) {
+                // Keep admin updated with these credentials
+                if (admin.email !== adminEmail || admin.passwordHash !== adminPassword) {
+                    await this.update(admin.id, { email: adminEmail, passwordHash: adminPassword });
+                    console.log('Admin credentials updated on startup.');
+                }
+            } else {
+                await this.create({
+                    email: adminEmail,
+                    passwordHash: adminPassword,
+                    name: 'Admin',
+                    document: 'admin_123', // Dummy document for initial admin
+                    role: 'ADMIN'
+                });
+                console.log('Admin user created on startup.');
+            }
+        } catch (e) {
+            console.error('Failed to ensure admin user exists on startup:', e);
+        }
+    }
 
     async findOne(document: string): Promise<User | null> {
         return this.prisma.user.findUnique({
