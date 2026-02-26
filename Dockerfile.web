@@ -28,9 +28,6 @@ ENV PORT=3000
 # Next.js standalone inclui server.js + arquivos estáticos
 COPY --from=builder /app/apps/web/.next/standalone ./
 COPY --from=builder /app/apps/web/.next/static ./apps/web/.next/static
-# Adiciona verificação para copiar a pasta public apenas se ela existir (fallback para nçao quebrar a build)
-# O Next standalone espera a public no root do app web (onde fica o server.js)
-COPY --from=builder /app/apps/web/public ./apps/web/public/
 
 EXPOSE 3000
 
